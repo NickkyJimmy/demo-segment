@@ -1,8 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Get a free hosted Postgres database in seconds: `npx create-db`
-
 generator client {
   provider = "prisma-client"
   output   = "../src/generated/prisma"
@@ -10,4 +5,143 @@ generator client {
 
 datasource db {
   provider = "postgresql"
+}
+
+enum SampleType {
+  A
+  B
+}
+
+model Voice {
+  // "Voice" here is a stimulus/audio-group bucket in study design, not speaker identity.
+  id          String       @id @default(cuid())
+  code        String       @unique
+  name        String
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  samples     Sample[]
+  studyVoices StudyVoice[]
+  sessions    ParticipantSession[]
+  assignments Assignment[]
+  responses   Response[]
+}
+
+model Sample {
+  id          String       @id @default(cuid())
+  voiceId     String
+  fileName    String
+  fileUrl     String
+  sampleType  SampleType
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  voice       Voice        @relation(fields: [voiceId], references: [id], onDelete: Cascade)
+  assignments Assignment[]
+  responses   Response[]
+
+  @@unique([voiceId, fileName])
+  @@index([voiceId, sampleType])
+}
+
+model Study {
+  id               String        @id @default(cuid())
+  name             String
+  description      String?
+  participantCount Int           @default(18)
+  samplesPerVoice  Int           @default(12)
+  quotaA           Int           @default(6)
+  quotaB           Int           @default(6)
+  seed             String?
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+  participants     Participant[]
+  assignments      Assignment[]
+  studyVoices      StudyVoice[]
+
+  @@index([createdAt])
+}
+
+model StudyVoice {
+  id        String   @id @default(cuid())
+  studyId   String
+  voiceId   String
+  createdAt DateTime @default(now())
+  study     Study    @relation(fields: [studyId], references: [id], onDelete: Cascade)
+  voice     Voice    @relation(fields: [voiceId], references: [id], onDelete: Cascade)
+
+  @@unique([studyId, voiceId])
+}
+
+model Participant {
+  id           String               @id @default(cuid())
+  studyId      String
+  userCode     String               @unique
+  createdAt    DateTime             @default(now())
+  updatedAt    DateTime             @updatedAt
+  study        Study                @relation(fields: [studyId], references: [id], onDelete: Cascade)
+  session      ParticipantSession?
+  assignments  Assignment[]
+  responses    Response[]
+
+  @@index([studyId])
+}
+
+model Assignment {
+  id            String         @id @default(cuid())
+  studyId       String
+  participantId String
+  voiceId       String
+  sampleId      String
+  sequence      Int
+  createdAt     DateTime       @default(now())
+  study         Study          @relation(fields: [studyId], references: [id], onDelete: Cascade)
+  participant   Participant    @relation(fields: [participantId], references: [id], onDelete: Cascade)
+  voice         Voice          @relation(fields: [voiceId], references: [id], onDelete: Cascade)
+  sample        Sample         @relation(fields: [sampleId], references: [id], onDelete: Cascade)
+  response      Response?
+  playbackLock  PlaybackLock?
+
+  @@unique([participantId, voiceId, sequence])
+  @@unique([participantId, voiceId, sampleId])
+  @@index([studyId, participantId, voiceId])
+}
+
+model ParticipantSession {
+  id            String      @id @default(cuid())
+  participantId String      @unique
+  voiceId       String?
+  startedAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  completedAt   DateTime?
+  overallRating Int?
+  feedbackText  String?
+  feedbackSubmittedAt DateTime?
+  participant   Participant @relation(fields: [participantId], references: [id], onDelete: Cascade)
+  voice         Voice?      @relation(fields: [voiceId], references: [id])
+
+  @@index([voiceId])
+}
+
+model Response {
+  id            String      @id @default(cuid())
+  assignmentId  String      @unique
+  participantId String
+  voiceId       String
+  sampleId      String
+  rating        Int
+  createdAt     DateTime    @default(now())
+  assignment    Assignment  @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  participant   Participant @relation(fields: [participantId], references: [id], onDelete: Cascade)
+  voice         Voice       @relation(fields: [voiceId], references: [id], onDelete: Cascade)
+  sample        Sample      @relation(fields: [sampleId], references: [id], onDelete: Cascade)
+
+  @@index([participantId])
+  @@index([voiceId])
+}
+
+model PlaybackLock {
+  id            String     @id @default(cuid())
+  assignmentId  String     @unique
+  startedAt     DateTime   @default(now())
+  endedAt       DateTime?
+  assignment    Assignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
 }
