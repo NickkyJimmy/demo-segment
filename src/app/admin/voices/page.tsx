@@ -8,20 +8,24 @@ export const dynamic = "force-dynamic";
 
 type SearchProps = Promise<Record<string, string | string[] | undefined>>;
 
+function voicesRedirectUrl(type: "ok" | "error", message: string) {
+  return `/admin/voices?${type}=${encodeURIComponent(message)}`;
+}
+
 async function createVoice(formData: FormData) {
   "use server";
   const name = String(formData.get("name") ?? "").trim();
   const code = String(formData.get("code") ?? "").trim().toUpperCase();
   if (!name || !code) {
-    redirect("/admin/voices?error=Tên%20nhóm%20audio%20và%20mã%20là%20bắt%20buộc");
+    redirect(voicesRedirectUrl("error", "Tên nhóm audio và mã là bắt buộc"));
   }
 
   try {
     await prisma.voice.create({ data: { name, code } });
     revalidatePath("/admin/voices");
-    redirect("/admin/voices?ok=Đã%20tạo%20nhóm%20audio");
+    redirect(voicesRedirectUrl("ok", "Đã tạo nhóm audio"));
   } catch {
-    redirect("/admin/voices?error=Không%20thể%20tạo%20nhóm%20audio%20(có%20thể%20trùng%20mã)");
+    redirect(voicesRedirectUrl("error", "Không thể tạo nhóm audio (có thể trùng mã)"));
   }
 }
 
@@ -31,16 +35,21 @@ async function updateSampleType(formData: FormData) {
   const sampleType = String(formData.get("sampleType") ?? "") as SampleType;
 
   if (!sampleId || !(sampleType in SampleType)) {
-    redirect("/admin/voices?error=Dữ%20liệu%20cập%20nhật%20mẫu%20không%20hợp%20lệ");
+    redirect(voicesRedirectUrl("error", "Dữ liệu cập nhật mẫu không hợp lệ"));
   }
 
-  await prisma.sample.update({
-    where: { id: sampleId },
-    data: { sampleType },
-  });
+  try {
+    await prisma.sample.update({
+      where: { id: sampleId },
+      data: { sampleType },
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Không thể cập nhật loại mẫu";
+    redirect(voicesRedirectUrl("error", message));
+  }
 
   revalidatePath("/admin/voices");
-  redirect("/admin/voices?ok=Đã%20cập%20nhật%20loại%20mẫu");
+  redirect(voicesRedirectUrl("ok", "Đã cập nhật loại mẫu"));
 }
 
 async function deleteVoice(formData: FormData) {
@@ -48,7 +57,7 @@ async function deleteVoice(formData: FormData) {
   const voiceId = String(formData.get("voiceId") ?? "");
 
   if (!voiceId) {
-    redirect("/admin/voices?error=Yêu%20cầu%20xóa%20nhóm%20audio%20không%20hợp%20lệ");
+    redirect(voicesRedirectUrl("error", "Yêu cầu xóa nhóm audio không hợp lệ"));
   }
 
   const usage = await prisma.voice.findUnique({
@@ -66,7 +75,7 @@ async function deleteVoice(formData: FormData) {
   });
 
   if (!usage) {
-    redirect("/admin/voices?error=Không%20tìm%20thấy%20nhóm%20audio");
+    redirect(voicesRedirectUrl("error", "Không tìm thấy nhóm audio"));
   }
 
   if (
@@ -75,55 +84,18 @@ async function deleteVoice(formData: FormData) {
     usage._count.sessions > 0 ||
     usage._count.studyVoices > 0
   ) {
-    redirect(
-      "/admin/voices?error=Không%20thể%20xóa%20nhóm%20audio%20vì%20đã%20được%20dùng%20trong%20nghiên%20cứu%20hoặc%20phiên"
-    );
+    redirect(voicesRedirectUrl("error", "Không thể xóa nhóm audio vì đã được dùng trong nghiên cứu hoặc phiên"));
   }
 
-  await prisma.voice.delete({ where: { id: voiceId } });
-  revalidatePath("/admin/voices");
-  redirect("/admin/voices?ok=Đã%20xóa%20nhóm%20audio");
-}
-
-async function relabelVoiceSamplesFromFilename(formData: FormData) {
-  "use server";
-  const voiceId = String(formData.get("voiceId") ?? "");
-
-  if (!voiceId) {
-    redirect("/admin/voices?error=Yêu%20cầu%20gán%20nhãn%20nhóm%20audio%20không%20hợp%20lệ");
-  }
-
-  const samples = await prisma.sample.findMany({
-    where: { voiceId },
-    select: { id: true, fileName: true },
-  });
-
-  if (samples.length === 0) {
-    redirect("/admin/voices?error=Không%20có%20mẫu%20nào%20trong%20nhóm%20audio%20này");
-  }
-
-  const updates = samples
-    .map((sample) => {
-      const upper = sample.fileName.toUpperCase();
-      let sampleType: SampleType | null = null;
-
-      if (upper.includes("B_")) sampleType = SampleType.B;
-      else if (upper.includes("A_")) sampleType = SampleType.A;
-
-      if (!sampleType) return null;
-      return prisma.sample.update({
-        where: { id: sample.id },
-        data: { sampleType },
-      });
-    })
-    .filter((item): item is ReturnType<typeof prisma.sample.update> => Boolean(item));
-
-  if (updates.length > 0) {
-    await prisma.$transaction(updates);
+  try {
+    await prisma.voice.delete({ where: { id: voiceId } });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Không thể xóa nhóm audio";
+    redirect(voicesRedirectUrl("error", message));
   }
 
   revalidatePath("/admin/voices");
-  redirect(`/admin/voices?ok=Đã%20gán%20lại%20${updates.length}%20mẫu%20theo%20tên%20file`);
+  redirect(voicesRedirectUrl("ok", "Đã xóa nhóm audio"));
 }
 
 export default async function VoicesPage({ searchParams }: { searchParams?: SearchProps }) {
@@ -267,12 +239,6 @@ export default async function VoicesPage({ searchParams }: { searchParams?: Sear
                   <p className="text-sm text-muted-foreground">
                     Tổng: {voice._count.samples} · A: {aCount} · B: {bCount}
                   </p>
-                  <form action={relabelVoiceSamplesFromFilename}>
-                    <input type="hidden" name="voiceId" value={voice.id} />
-                    <button className={buttonVariants({ variant: "outline", size: "sm" })} type="submit">
-                      Tự sửa A/B
-                    </button>
-                  </form>
                   <form action={deleteVoice}>
                     <input type="hidden" name="voiceId" value={voice.id} />
                     <button className={buttonVariants({ variant: "destructive", size: "sm" })} type="submit">

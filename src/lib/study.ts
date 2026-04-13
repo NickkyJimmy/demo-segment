@@ -72,6 +72,8 @@ export async function generateStudyAssignments(studyId: string) {
     total: study.samplesPerVoice,
     a: study.quotaA,
     b: study.quotaB,
+  }, {
+    voices: voiceBuckets,
   });
 
   if (errors.length > 0) {

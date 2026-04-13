@@ -9,6 +9,10 @@ export const dynamic = "force-dynamic";
 
 type SearchProps = Promise<Record<string, string | string[] | undefined>>;
 
+function studiesRedirectUrl(type: "ok" | "error", message: string) {
+  return `/admin/studies?${type}=${encodeURIComponent(message)}`;
+}
+
 async function createStudy(formData: FormData) {
   "use server";
   const name = String(formData.get("name") ?? "").trim();
@@ -36,7 +40,7 @@ async function createStudy(formData: FormData) {
   });
 
   revalidatePath("/admin/studies");
-  redirect(`/admin/studies?ok=Đã%20tạo%20nghiên%20cứu:%20${encodeURIComponent(study.name)}`);
+  redirect(studiesRedirectUrl("ok", `Đã tạo nghiên cứu: ${study.name}`));
 }
 
 async function runGenerator(formData: FormData) {
@@ -47,10 +51,13 @@ async function runGenerator(formData: FormData) {
   try {
     const result = await generateStudyAssignments(studyId);
     revalidatePath("/admin/studies");
-    redirectTo = `/admin/studies?ok=Đã%20tạo%20phân%20công:%20${result.assignments}%20dòng%20cho%20${result.participants}%20người`;
+    redirectTo = studiesRedirectUrl(
+      "ok",
+      `Đã tạo phân công: ${result.assignments} dòng cho ${result.participants} người`
+    );
   } catch (error) {
     const message = error instanceof Error ? error.message : "Không thể tạo phân công";
-    redirectTo = `/admin/studies?error=${encodeURIComponent(message)}`;
+    redirectTo = studiesRedirectUrl("error", message);
   }
 
   redirect(redirectTo);
@@ -64,13 +71,13 @@ async function runValidation(formData: FormData) {
   try {
     const result = await validateStudyAssignments(studyId);
     if (result.ok) {
-      redirectTo = `/admin/studies?ok=Kiểm%20tra%20thành%20công%20(${result.assignmentCount}%20phân%20công)`;
+      redirectTo = studiesRedirectUrl("ok", `Kiểm tra thành công (${result.assignmentCount} phân công)`);
     } else {
-      redirectTo = `/admin/studies?error=${encodeURIComponent(result.issues.slice(0, 4).join(" | "))}`;
+      redirectTo = studiesRedirectUrl("error", result.issues.slice(0, 4).join(" | "));
     }
   } catch (error) {
     const message = error instanceof Error ? error.message : "Kiểm tra thất bại";
-    redirectTo = `/admin/studies?error=${encodeURIComponent(message)}`;
+    redirectTo = studiesRedirectUrl("error", message);
   }
 
   redirect(redirectTo);
