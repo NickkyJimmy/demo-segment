@@ -63,7 +63,7 @@ export default async function SessionPage({ params }: { params: Promise<{ userCo
   if (voiceOptions.length === 0) {
     return (
       <main className="mx-auto max-w-2xl p-6">
-        <p>No audio groups configured for this study yet.</p>
+        <p>Nghiên cứu này chưa được cấu hình nhóm audio.</p>
       </main>
     );
   }
@@ -73,11 +73,11 @@ export default async function SessionPage({ params }: { params: Promise<{ userCo
       <main className="mx-auto flex min-h-screen w-full max-w-4xl flex-col justify-center gap-6 px-6 py-10">
         <section className="rounded-3xl border bg-white/85 p-6 shadow-sm backdrop-blur md:p-8">
           <p className="inline-flex rounded-full border bg-background px-3 py-1 text-xs font-medium tracking-[0.16em] uppercase">
-            Participant Session
+            Phiên Người tham gia
           </p>
-          <h1 className="mt-3 text-3xl font-semibold tracking-tight">Choose your audio group</h1>
+          <h1 className="mt-3 text-3xl font-semibold tracking-tight">Chọn nhóm audio của bạn</h1>
           <p className="mt-2 text-sm text-muted-foreground">
-            This selection is locked for the remainder of your session.
+            Lựa chọn này sẽ bị khóa trong suốt phiên làm bài.
           </p>
 
           <form action={selectVoice} className="mt-6 grid gap-3 sm:grid-cols-2">
@@ -90,7 +90,7 @@ export default async function SessionPage({ params }: { params: Promise<{ userCo
                 className="rounded-2xl border bg-card p-4 text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow"
                 type="submit"
               >
-                <p className="text-xs tracking-wide text-muted-foreground uppercase">Audio Group</p>
+                <p className="text-xs tracking-wide text-muted-foreground uppercase">Nhóm audio</p>
                 <p className="mt-1 text-lg font-semibold">
                   {voice.code} - {voice.name}
                 </p>
@@ -121,7 +121,7 @@ export default async function SessionPage({ params }: { params: Promise<{ userCo
   if (total === 0) {
     return (
       <main className="mx-auto max-w-2xl p-6">
-        <p>No assignments generated for this participant yet.</p>
+        <p>Chưa có phân công audio cho người tham gia này.</p>
       </main>
     );
   }
@@ -133,8 +133,8 @@ export default async function SessionPage({ params }: { params: Promise<{ userCo
   return (
     <main className="mx-auto flex min-h-screen w-full max-w-4xl flex-col gap-6 px-6 py-10">
       <header className="rounded-3xl border bg-white/85 p-5 shadow-sm backdrop-blur">
-        <p className="text-xs tracking-wide text-muted-foreground uppercase">Session</p>
-        <h1 className="mt-1 text-2xl font-semibold tracking-tight">Participant {participant.userCode}</h1>
+        <p className="text-xs tracking-wide text-muted-foreground uppercase">Phiên</p>
+        <h1 className="mt-1 text-2xl font-semibold tracking-tight">Người tham gia {participant.userCode}</h1>
       </header>
 
       <SessionFeedbackForm

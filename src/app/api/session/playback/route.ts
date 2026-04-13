@@ -6,7 +6,7 @@ export async function POST(req: Request) {
   const assignmentId = String(body.assignmentId ?? "");
 
   if (!userCode || !assignmentId) {
-    return Response.json({ error: "Missing userCode or assignmentId" }, { status: 400 });
+    return Response.json({ error: "Thiếu userCode hoặc assignmentId" }, { status: 400 });
   }
 
   const assignment = await prisma.assignment.findUnique({
@@ -18,11 +18,11 @@ export async function POST(req: Request) {
   });
 
   if (!assignment || assignment.participant.userCode !== userCode) {
-    return Response.json({ error: "Assignment not found" }, { status: 404 });
+    return Response.json({ error: "Không tìm thấy phân công audio" }, { status: 404 });
   }
 
   if (assignment.playbackLock?.endedAt) {
-    return Response.json({ error: "Playback already completed for this audio" }, { status: 409 });
+    return Response.json({ error: "Audio này đã được nghe xong trước đó" }, { status: 409 });
   }
 
   await prisma.playbackLock.upsert({

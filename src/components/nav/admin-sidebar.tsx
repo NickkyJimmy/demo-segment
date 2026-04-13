@@ -17,10 +17,10 @@ import {
 } from "@/components/ui/sidebar";
 
 const items = [
-  { title: "Dashboard", href: "/admin", icon: HomeIcon },
-  { title: "Audio", href: "/admin/voices", icon: Mic2Icon },
-  { title: "Studies", href: "/admin/studies", icon: FolderCogIcon },
-  { title: "Responses", href: "/admin/responses", icon: BarChart3Icon },
+  { title: "Tổng quan", href: "/admin", icon: HomeIcon },
+  { title: "Âm thanh", href: "/admin/voices", icon: Mic2Icon },
+  { title: "Nghiên cứu", href: "/admin/studies", icon: FolderCogIcon },
+  { title: "Phản hồi", href: "/admin/responses", icon: BarChart3Icon },
 ];
 
 export function AdminSidebar() {
@@ -31,14 +31,14 @@ export function AdminSidebar() {
     <Sidebar variant="inset" className="bg-sidebar/95">
       <SidebarHeader>
         <div className="rounded-xl border bg-sidebar-accent/50 px-3 py-2">
-          <p className="text-xs tracking-[0.16em] uppercase text-sidebar-foreground/70">Admin POV</p>
-          <p className="text-sm font-semibold">Research Operations</p>
+          <p className="text-xs tracking-[0.16em] uppercase text-sidebar-foreground/70">Góc nhìn Quản trị</p>
+          <p className="text-sm font-semibold">Vận hành nghiên cứu</p>
         </div>
       </SidebarHeader>
 
       <SidebarContent>
         <SidebarGroup>
-          <SidebarGroupLabel>Workspace</SidebarGroupLabel>
+          <SidebarGroupLabel>Khu vực làm việc</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               {items.map((item) => (
@@ -61,8 +61,8 @@ export function AdminSidebar() {
       <SidebarSeparator />
       <SidebarFooter>
         <div className="space-y-2 px-2">
-          <p className="text-xs text-sidebar-foreground/70">Admin tools for setup, execution, and reporting.</p>
-          <p className="text-[11px] text-sidebar-foreground/60">Tip: Use “Studies” to generate participant session links fast.</p>
+          <p className="text-xs text-sidebar-foreground/70">Công cụ quản trị cho thiết lập, vận hành và báo cáo.</p>
+          <p className="text-[11px] text-sidebar-foreground/60">Mẹo: vào “Nghiên cứu” để tạo nhanh link phiên cho người tham gia.</p>
         </div>
       </SidebarFooter>
     </Sidebar>

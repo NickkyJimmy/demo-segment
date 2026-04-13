@@ -6,7 +6,7 @@ export async function POST(req: Request) {
   const overallRating = Number(body.overallRating ?? NaN);
 
   if (!userCode || !Number.isFinite(overallRating) || overallRating < 1 || overallRating > 5) {
-    return Response.json({ error: "Invalid payload" }, { status: 400 });
+    return Response.json({ error: "Dữ liệu gửi lên không hợp lệ" }, { status: 400 });
   }
 
   const participant = await prisma.participant.findUnique({
@@ -17,7 +17,7 @@ export async function POST(req: Request) {
   });
 
   if (!participant || !participant.session?.voiceId) {
-    return Response.json({ error: "Participant session not found" }, { status: 404 });
+    return Response.json({ error: "Không tìm thấy phiên của người tham gia" }, { status: 404 });
   }
 
   const assignments = await prisma.assignment.findMany({
@@ -31,16 +31,16 @@ export async function POST(req: Request) {
   });
 
   if (assignments.length === 0) {
-    return Response.json({ error: "No assignments found" }, { status: 400 });
+    return Response.json({ error: "Không tìm thấy phân công audio" }, { status: 400 });
   }
 
   const allPlayed = assignments.every((assignment) => Boolean(assignment.playbackLock?.endedAt));
   if (!allPlayed) {
-    return Response.json({ error: "All audio must be listened before submitting feedback" }, { status: 400 });
+    return Response.json({ error: "Bạn cần nghe hết audio trước khi gửi đánh giá" }, { status: 400 });
   }
 
   if (participant.session.feedbackSubmittedAt) {
-    return Response.json({ error: "Feedback already submitted" }, { status: 409 });
+    return Response.json({ error: "Bạn đã gửi đánh giá rồi" }, { status: 409 });
   }
 
   await prisma.participantSession.update({

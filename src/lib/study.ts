@@ -3,7 +3,8 @@ import { prisma } from "@/lib/prisma";
 import { generateAssignments, validateAssignmentPlans } from "@/lib/assignment/generator";
 
 function participantCode(studyId: string, index: number) {
-  return `S${studyId.slice(0, 4).toUpperCase()}-P${String(index + 1).padStart(2, "0")}`;
+  // Use full study id to guarantee uniqueness across different studies.
+  return `S${studyId.toUpperCase()}-P${String(index + 1).padStart(2, "0")}`;
 }
 
 export async function ensureParticipants(studyId: string, count: number) {
@@ -42,11 +43,11 @@ export async function generateStudyAssignments(studyId: string) {
   });
 
   if (!study) {
-    throw new Error("Study not found.");
+    throw new Error("Không tìm thấy nghiên cứu.");
   }
 
   if (study.studyVoices.length === 0) {
-    throw new Error("Study must include at least one voice.");
+    throw new Error("Nghiên cứu phải có ít nhất một nhóm audio.");
   }
 
   const participants = await ensureParticipants(study.id, study.participantCount);
@@ -74,7 +75,7 @@ export async function generateStudyAssignments(studyId: string) {
   });
 
   if (errors.length > 0) {
-    throw new Error(`Assignment validation failed: ${errors.join(" | ")}`);
+    throw new Error(`Kiểm tra phân công thất bại: ${errors.join(" | ")}`);
   }
 
   await prisma.$transaction(async (tx) => {
@@ -104,7 +105,7 @@ export async function generateStudyAssignments(studyId: string) {
 export async function validateStudyAssignments(studyId: string) {
   const study = await prisma.study.findUnique({ where: { id: studyId } });
   if (!study) {
-    throw new Error("Study not found.");
+    throw new Error("Không tìm thấy nghiên cứu.");
   }
 
   const assignments = await prisma.assignment.findMany({
@@ -133,13 +134,13 @@ export async function validateStudyAssignments(studyId: string) {
 
   grouped.forEach((bucket, key) => {
     if (bucket.total !== study.samplesPerVoice) {
-      issues.push(`${key} has ${bucket.total} samples; expected ${study.samplesPerVoice}.`);
+      issues.push(`${key} có ${bucket.total} mẫu; mong đợi ${study.samplesPerVoice}.`);
     }
     if (bucket.a !== study.quotaA || bucket.b !== study.quotaB) {
-      issues.push(`${key} has A/B ${bucket.a}/${bucket.b}; expected ${study.quotaA}/${study.quotaB}.`);
+      issues.push(`${key} có tỷ lệ A/B là ${bucket.a}/${bucket.b}; mong đợi ${study.quotaA}/${study.quotaB}.`);
     }
     if (bucket.seen.size !== bucket.total) {
-      issues.push(`${key} contains duplicate sample IDs.`);
+      issues.push(`${key} chứa sample ID bị trùng.`);
     }
   });
 

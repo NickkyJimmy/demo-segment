@@ -25,10 +25,10 @@ export default async function SessionUserLayout({
         <header className="sticky top-0 z-20 flex h-14 items-center justify-between border-b bg-background/80 px-4 backdrop-blur">
           <div className="flex items-center">
             <SidebarTrigger />
-            <p className="ml-2 text-sm font-medium text-muted-foreground">Participant Session</p>
+            <p className="ml-2 text-sm font-medium text-muted-foreground">Phiên Người tham gia</p>
           </div>
           <Link href="/admin" className={buttonVariants({ variant: "outline", size: "sm" })}>
-            Switch to Admin POV
+            Chuyển sang Góc nhìn Quản trị
           </Link>
         </header>
         {children}

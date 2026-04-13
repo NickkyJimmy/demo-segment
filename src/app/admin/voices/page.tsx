@@ -13,15 +13,15 @@ async function createVoice(formData: FormData) {
   const name = String(formData.get("name") ?? "").trim();
   const code = String(formData.get("code") ?? "").trim().toUpperCase();
   if (!name || !code) {
-    redirect("/admin/voices?error=Audio%20group%20name%20and%20code%20are%20required");
+    redirect("/admin/voices?error=Tên%20nhóm%20audio%20và%20mã%20là%20bắt%20buộc");
   }
 
   try {
     await prisma.voice.create({ data: { name, code } });
     revalidatePath("/admin/voices");
-    redirect("/admin/voices?ok=Audio%20group%20created");
+    redirect("/admin/voices?ok=Đã%20tạo%20nhóm%20audio");
   } catch {
-    redirect("/admin/voices?error=Failed%20to%20create%20audio%20group%20(duplicate%20code%20maybe)");
+    redirect("/admin/voices?error=Không%20thể%20tạo%20nhóm%20audio%20(có%20thể%20trùng%20mã)");
   }
 }
 
@@ -31,7 +31,7 @@ async function updateSampleType(formData: FormData) {
   const sampleType = String(formData.get("sampleType") ?? "") as SampleType;
 
   if (!sampleId || !(sampleType in SampleType)) {
-    redirect("/admin/voices?error=Invalid%20sample%20update");
+    redirect("/admin/voices?error=Dữ%20liệu%20cập%20nhật%20mẫu%20không%20hợp%20lệ");
   }
 
   await prisma.sample.update({
@@ -40,7 +40,7 @@ async function updateSampleType(formData: FormData) {
   });
 
   revalidatePath("/admin/voices");
-  redirect("/admin/voices?ok=Sample%20type%20updated");
+  redirect("/admin/voices?ok=Đã%20cập%20nhật%20loại%20mẫu");
 }
 
 async function deleteVoice(formData: FormData) {
@@ -48,7 +48,7 @@ async function deleteVoice(formData: FormData) {
   const voiceId = String(formData.get("voiceId") ?? "");
 
   if (!voiceId) {
-    redirect("/admin/voices?error=Invalid%20audio%20group%20delete%20request");
+    redirect("/admin/voices?error=Yêu%20cầu%20xóa%20nhóm%20audio%20không%20hợp%20lệ");
   }
 
   const usage = await prisma.voice.findUnique({
@@ -66,7 +66,7 @@ async function deleteVoice(formData: FormData) {
   });
 
   if (!usage) {
-    redirect("/admin/voices?error=Audio%20group%20not%20found");
+    redirect("/admin/voices?error=Không%20tìm%20thấy%20nhóm%20audio");
   }
 
   if (
@@ -76,13 +76,13 @@ async function deleteVoice(formData: FormData) {
     usage._count.studyVoices > 0
   ) {
     redirect(
-      "/admin/voices?error=Cannot%20delete%20audio%20group%20that%20is%20already%20used%20in%20studies%20or%20sessions"
+      "/admin/voices?error=Không%20thể%20xóa%20nhóm%20audio%20vì%20đã%20được%20dùng%20trong%20nghiên%20cứu%20hoặc%20phiên"
     );
   }
 
   await prisma.voice.delete({ where: { id: voiceId } });
   revalidatePath("/admin/voices");
-  redirect("/admin/voices?ok=Audio%20group%20deleted");
+  redirect("/admin/voices?ok=Đã%20xóa%20nhóm%20audio");
 }
 
 async function relabelVoiceSamplesFromFilename(formData: FormData) {
@@ -90,7 +90,7 @@ async function relabelVoiceSamplesFromFilename(formData: FormData) {
   const voiceId = String(formData.get("voiceId") ?? "");
 
   if (!voiceId) {
-    redirect("/admin/voices?error=Invalid%20audio%20group%20relabel%20request");
+    redirect("/admin/voices?error=Yêu%20cầu%20gán%20nhãn%20nhóm%20audio%20không%20hợp%20lệ");
   }
 
   const samples = await prisma.sample.findMany({
@@ -99,7 +99,7 @@ async function relabelVoiceSamplesFromFilename(formData: FormData) {
   });
 
   if (samples.length === 0) {
-    redirect("/admin/voices?error=No%20samples%20found%20for%20this%20audio%20group");
+    redirect("/admin/voices?error=Không%20có%20mẫu%20nào%20trong%20nhóm%20audio%20này");
   }
 
   const updates = samples
@@ -123,7 +123,7 @@ async function relabelVoiceSamplesFromFilename(formData: FormData) {
   }
 
   revalidatePath("/admin/voices");
-  redirect(`/admin/voices?ok=${updates.length}%20samples%20re-labeled%20from%20filename`);
+  redirect(`/admin/voices?ok=Đã%20gán%20lại%20${updates.length}%20mẫu%20theo%20tên%20file`);
 }
 
 export default async function VoicesPage({ searchParams }: { searchParams?: SearchProps }) {
@@ -155,21 +155,21 @@ export default async function VoicesPage({ searchParams }: { searchParams?: Sear
   return (
     <main className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-6 py-10">
       <header className="rounded-3xl border bg-gradient-to-br from-white to-amber-50/60 p-6 shadow-sm backdrop-blur">
-        <h1 className="text-3xl font-semibold tracking-tight">Audio Management</h1>
+        <h1 className="text-3xl font-semibold tracking-tight">Quản Lý Audio</h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          Create audio groups, upload batches, and curate A/B sample labels with confidence.
+          Tạo nhóm audio, tải lên hàng loạt và quản lý nhãn mẫu A/B một cách chính xác.
         </p>
         <div className="mt-4 grid gap-2 sm:grid-cols-3">
           <div className="rounded-xl border bg-background px-3 py-2">
-            <p className="text-xs text-muted-foreground">Audio Groups</p>
+            <p className="text-xs text-muted-foreground">Nhóm Audio</p>
             <p className="text-lg font-semibold">{voices.length}</p>
           </div>
           <div className="rounded-xl border bg-background px-3 py-2">
-            <p className="text-xs text-muted-foreground">Total Audio Files</p>
+            <p className="text-xs text-muted-foreground">Tổng số file Audio</p>
             <p className="text-lg font-semibold">{totalSamples}</p>
           </div>
           <div className="rounded-xl border bg-background px-3 py-2">
-            <p className="text-xs text-muted-foreground">Eligible (6A/6B)</p>
+            <p className="text-xs text-muted-foreground">Đủ điều kiện (6A/6B)</p>
             <p className="text-lg font-semibold">{voiceWithABReady}</p>
           </div>
         </div>
@@ -180,7 +180,7 @@ export default async function VoicesPage({ searchParams }: { searchParams?: Sear
             target="_blank"
             rel="noreferrer"
           >
-            Download Mock Audio Pack (200)
+            Tải bộ Audio mẫu (200 file)
           </a>
         </div>
       </header>
@@ -190,28 +190,28 @@ export default async function VoicesPage({ searchParams }: { searchParams?: Sear
 
       <section className="grid gap-4 lg:grid-cols-2">
         <article className="rounded-2xl border bg-card/80 p-5 shadow-sm">
-          <h2 className="text-lg font-semibold">Create Audio Group</h2>
+          <h2 className="text-lg font-semibold">Tạo Nhóm Audio</h2>
           <form action={createVoice} className="mt-4 grid gap-3 sm:grid-cols-3">
             <input
               name="name"
-              placeholder="Audio Group Name"
+              placeholder="Tên nhóm audio"
               className="rounded-lg border bg-white px-3 py-2 text-sm"
               required
             />
             <input
               name="code"
-              placeholder="Code (e.g. V1)"
+              placeholder="Mã (ví dụ: V1)"
               className="rounded-lg border bg-white px-3 py-2 text-sm"
               required
             />
             <button className={buttonVariants({ variant: "default" })} type="submit">
-              Create
+              Tạo
             </button>
           </form>
         </article>
 
         <article className="rounded-2xl border bg-card/80 p-5 shadow-sm">
-          <h2 className="text-lg font-semibold">Batch Upload</h2>
+          <h2 className="text-lg font-semibold">Tải Lên Hàng Loạt</h2>
           <form
             action="/api/admin/samples/upload"
             method="post"
@@ -220,7 +220,7 @@ export default async function VoicesPage({ searchParams }: { searchParams?: Sear
           >
             <input type="hidden" name="bucket" value="test" />
             <select name="voiceId" className="rounded-lg border bg-white px-3 py-2 text-sm" required>
-              <option value="">Select Audio Group</option>
+              <option value="">Chọn nhóm audio</option>
               {voices.map((voice) => (
                 <option key={voice.id} value={voice.id}>
                   {voice.code} - {voice.name}
@@ -236,11 +236,11 @@ export default async function VoicesPage({ searchParams }: { searchParams?: Sear
               required
             />
             <button className={buttonVariants({ variant: "default" })} type="submit">
-              Upload Files
+              Tải file lên
             </button>
           </form>
           <p className="mt-2 text-xs text-muted-foreground">
-            Types are auto-detected from filename prefixes: `A_` and `B_`.
+            Loại mẫu được tự nhận diện theo tiền tố tên file: `A_` và `B_`.
           </p>
         </article>
       </section>
@@ -248,9 +248,9 @@ export default async function VoicesPage({ searchParams }: { searchParams?: Sear
       <section className="space-y-4">
         {voices.length === 0 ? (
           <article className="rounded-2xl border border-dashed bg-card/60 p-8 text-center">
-            <p className="text-lg font-semibold">No audio groups yet</p>
+            <p className="text-lg font-semibold">Chưa có nhóm audio</p>
             <p className="mt-2 text-sm text-muted-foreground">
-              Create your first audio group, then upload files with `A_` and `B_` prefixes to continue.
+              Hãy tạo nhóm audio đầu tiên, sau đó tải các file có tiền tố `A_` và `B_` để tiếp tục.
             </p>
           </article>
         ) : null}
@@ -265,18 +265,18 @@ export default async function VoicesPage({ searchParams }: { searchParams?: Sear
                 </h3>
                 <div className="flex items-center gap-2">
                   <p className="text-sm text-muted-foreground">
-                    Total: {voice._count.samples} · A: {aCount} · B: {bCount}
+                    Tổng: {voice._count.samples} · A: {aCount} · B: {bCount}
                   </p>
                   <form action={relabelVoiceSamplesFromFilename}>
                     <input type="hidden" name="voiceId" value={voice.id} />
                     <button className={buttonVariants({ variant: "outline", size: "sm" })} type="submit">
-                      Auto-fix A/B
+                      Tự sửa A/B
                     </button>
                   </form>
                   <form action={deleteVoice}>
                     <input type="hidden" name="voiceId" value={voice.id} />
                     <button className={buttonVariants({ variant: "destructive", size: "sm" })} type="submit">
-                      Delete
+                      Xóa
                     </button>
                   </form>
                 </div>
@@ -286,9 +286,9 @@ export default async function VoicesPage({ searchParams }: { searchParams?: Sear
                 <table className="min-w-full text-left text-sm">
                   <thead className="bg-muted/30 text-xs tracking-wide uppercase text-muted-foreground">
                     <tr>
-                      <th className="px-4 py-3">File</th>
-                      <th className="px-4 py-3">Type</th>
-                      <th className="px-4 py-3">Update</th>
+                      <th className="px-4 py-3">Tệp</th>
+                      <th className="px-4 py-3">Loại</th>
+                      <th className="px-4 py-3">Cập nhật</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -312,7 +312,7 @@ export default async function VoicesPage({ searchParams }: { searchParams?: Sear
                               <option value="B">B</option>
                             </select>
                             <button className={buttonVariants({ variant: "outline", size: "sm" })} type="submit">
-                              Save
+                              Lưu
                             </button>
                           </form>
                         </td>

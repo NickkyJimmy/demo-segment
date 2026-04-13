@@ -17,7 +17,7 @@ async function createStudy(formData: FormData) {
   const voiceIds = formData.getAll("voiceIds").map(String).filter(Boolean);
 
   if (!name || voiceIds.length === 0) {
-    redirect("/admin/studies?error=Study%20name%20and%20at%20least%20one%20audio%20group%20required");
+    redirect("/admin/studies?error=Cần%20tên%20nghiên%20cứu%20và%20ít%20nhất%201%20nhóm%20audio");
   }
 
   const study = await prisma.study.create({
@@ -36,20 +36,20 @@ async function createStudy(formData: FormData) {
   });
 
   revalidatePath("/admin/studies");
-  redirect(`/admin/studies?ok=Study%20created:%20${encodeURIComponent(study.name)}`);
+  redirect(`/admin/studies?ok=Đã%20tạo%20nghiên%20cứu:%20${encodeURIComponent(study.name)}`);
 }
 
 async function runGenerator(formData: FormData) {
   "use server";
   const studyId = String(formData.get("studyId") ?? "");
 
-  let redirectTo = "/admin/studies?error=Assignment%20generation%20failed";
+  let redirectTo = "/admin/studies?error=Không%20thể%20tạo%20phân%20công";
   try {
     const result = await generateStudyAssignments(studyId);
     revalidatePath("/admin/studies");
-    redirectTo = `/admin/studies?ok=Assignments%20generated:%20${result.assignments}%20rows%20for%20${result.participants}%20participants`;
+    redirectTo = `/admin/studies?ok=Đã%20tạo%20phân%20công:%20${result.assignments}%20dòng%20cho%20${result.participants}%20người`;
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Assignment generation failed";
+    const message = error instanceof Error ? error.message : "Không thể tạo phân công";
     redirectTo = `/admin/studies?error=${encodeURIComponent(message)}`;
   }
 
@@ -60,16 +60,16 @@ async function runValidation(formData: FormData) {
   "use server";
   const studyId = String(formData.get("studyId") ?? "");
 
-  let redirectTo = "/admin/studies?error=Validation%20failed";
+  let redirectTo = "/admin/studies?error=Kiểm%20tra%20phân%20công%20thất%20bại";
   try {
     const result = await validateStudyAssignments(studyId);
     if (result.ok) {
-      redirectTo = `/admin/studies?ok=Validation%20passed%20(${result.assignmentCount}%20assignments)`;
+      redirectTo = `/admin/studies?ok=Kiểm%20tra%20thành%20công%20(${result.assignmentCount}%20phân%20công)`;
     } else {
       redirectTo = `/admin/studies?error=${encodeURIComponent(result.issues.slice(0, 4).join(" | "))}`;
     }
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Validation failed";
+    const message = error instanceof Error ? error.message : "Kiểm tra thất bại";
     redirectTo = `/admin/studies?error=${encodeURIComponent(message)}`;
   }
 
@@ -82,8 +82,8 @@ async function createMockStudyAndGenerate() {
   const ensureSyntheticMockGroup = async () => {
     const mockVoice = await prisma.voice.upsert({
       where: { code: "MOCK-AUTO" },
-      update: { name: "Mock Audio Group (Auto Seeded)" },
-      create: { code: "MOCK-AUTO", name: "Mock Audio Group (Auto Seeded)" },
+      update: { name: "Nhóm Audio Mẫu (Tạo Tự Động)" },
+      create: { code: "MOCK-AUTO", name: "Nhóm Audio Mẫu (Tạo Tự Động)" },
     });
 
     const existingCount = await prisma.sample.count({ where: { voiceId: mockVoice.id } });
@@ -155,7 +155,7 @@ async function createMockStudyAndGenerate() {
   }
 
   if (!picked) {
-    redirect("/admin/studies?error=Unable%20to%20prepare%20mock%20audio%20group%20for%20testing");
+    redirect("/admin/studies?error=Không%20thể%20chuẩn%20bị%20nhóm%20audio%20mẫu%20để%20kiểm%20thử");
   }
 
   let quotaA = 6;
@@ -174,14 +174,14 @@ async function createMockStudyAndGenerate() {
     }
 
     if (quotaA < 0 || quotaB < 0 || quotaA + quotaB !== 12 || quotaA > picked.aCount || quotaB > picked.bCount) {
-      redirect("/admin/studies?error=Unable%20to%20derive%20valid%20quotas%20for%20mock%20study");
+      redirect("/admin/studies?error=Không%20thể%20suy%20ra%20quota%20hợp%20lệ%20cho%20nghiên%20cứu%20mẫu");
     }
   }
 
   const study = await prisma.study.create({
     data: {
-      name: `Mock User Test ${new Date().toISOString().slice(0, 16).replace("T", " ")}`,
-      description: "Auto-generated test study for QA run.",
+      name: `Nghiên Cứu Mẫu ${new Date().toISOString().slice(0, 16).replace("T", " ")}`,
+      description: "Nghiên cứu kiểm thử được tạo tự động.",
       participantCount: 18,
       samplesPerVoice: 12,
       quotaA,
@@ -203,7 +203,7 @@ async function createMockStudyAndGenerate() {
   revalidatePath("/admin/studies");
   redirect(
     `/admin/studies?ok=${encodeURIComponent(
-      `Mock study created (A/B quota ${quotaA}/${quotaB}) and assignments generated. First session: /session/${firstParticipant?.userCode ?? ""}`
+      `Đã tạo nghiên cứu mẫu (quota A/B ${quotaA}/${quotaB}) và sinh phân công thành công. Phiên đầu tiên: /session/${firstParticipant?.userCode ?? ""}`
     )}`
   );
 }
@@ -245,21 +245,21 @@ export default async function StudiesPage({ searchParams }: { searchParams?: Sea
   return (
     <main className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-6 py-10">
       <header className="rounded-3xl border bg-gradient-to-br from-white to-sky-50/60 p-6 shadow-sm backdrop-blur">
-        <h1 className="text-3xl font-semibold tracking-tight">Studies & Assignments</h1>
+        <h1 className="text-3xl font-semibold tracking-tight">Nghiên Cứu & Phân Công</h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          Configure studies, bind audio groups, and generate balanced participant assignments.
+          Cấu hình nghiên cứu, gắn nhóm audio và sinh phân công cân bằng cho người tham gia.
         </p>
         <div className="mt-4 grid gap-2 sm:grid-cols-3">
           <div className="rounded-xl border bg-background px-3 py-2">
-            <p className="text-xs text-muted-foreground">Studies</p>
+            <p className="text-xs text-muted-foreground">Nghiên cứu</p>
             <p className="text-lg font-semibold">{studies.length}</p>
           </div>
           <div className="rounded-xl border bg-background px-3 py-2">
-            <p className="text-xs text-muted-foreground">Participants</p>
+            <p className="text-xs text-muted-foreground">Người tham gia</p>
             <p className="text-lg font-semibold">{totalParticipants}</p>
           </div>
           <div className="rounded-xl border bg-background px-3 py-2">
-            <p className="text-xs text-muted-foreground">Assignments</p>
+            <p className="text-xs text-muted-foreground">Phân công</p>
             <p className="text-lg font-semibold">{totalAssignments}</p>
           </div>
         </div>
@@ -269,14 +269,14 @@ export default async function StudiesPage({ searchParams }: { searchParams?: Sea
       {error ? <p className="rounded-xl border border-rose-300 bg-rose-50 p-3 text-sm">{error}</p> : null}
 
       <section className="rounded-2xl border bg-card/80 p-5 shadow-sm">
-        <h2 className="text-lg font-semibold">Create Study</h2>
-        <p className="mt-1 text-sm text-muted-foreground">Select one or more audio groups, then generate assignments after creation.</p>
+        <h2 className="text-lg font-semibold">Tạo Nghiên Cứu</h2>
+        <p className="mt-1 text-sm text-muted-foreground">Chọn một hoặc nhiều nhóm audio, sau đó sinh phân công sau khi tạo.</p>
         <form action={createStudy} className="mt-4 space-y-3">
-          <input name="name" placeholder="Study name" className="w-full rounded-lg border bg-white px-3 py-2" required />
-          <input name="description" placeholder="Description (optional)" className="w-full rounded-lg border bg-white px-3 py-2" />
+          <input name="name" placeholder="Tên nghiên cứu" className="w-full rounded-lg border bg-white px-3 py-2" required />
+          <input name="description" placeholder="Mô tả (không bắt buộc)" className="w-full rounded-lg border bg-white px-3 py-2" />
           <input
             name="seed"
-            placeholder="Seed (optional, deterministic assignments)"
+            placeholder="Seed (không bắt buộc, giúp sinh phân công cố định)"
             className="w-full rounded-lg border bg-white px-3 py-2"
           />
 
@@ -292,19 +292,18 @@ export default async function StudiesPage({ searchParams }: { searchParams?: Sea
           </div>
 
           <button className={buttonVariants({ variant: "default" })} type="submit">
-            Create Study
+            Tạo nghiên cứu
           </button>
         </form>
 
         <div className="mt-4 border-t pt-4">
-          <p className="text-sm font-medium">Quick QA Setup</p>
+          <p className="text-sm font-medium">Thiết lập QA nhanh</p>
           <p className="text-xs text-muted-foreground">
-            Creates one mock study from the first eligible audio group (needs at least 6 A + 6 B), then generates
-            assignments.
+            Tạo một nghiên cứu mẫu từ nhóm audio đủ điều kiện đầu tiên (cần ít nhất 6 A + 6 B), sau đó sinh phân công.
           </p>
           <form action={createMockStudyAndGenerate} className="mt-3">
             <button className={buttonVariants({ variant: "outline" })} type="submit">
-              Create Mock Study + Generate Assignments
+              Tạo nghiên cứu mẫu + Sinh phân công
             </button>
           </form>
         </div>
@@ -313,33 +312,33 @@ export default async function StudiesPage({ searchParams }: { searchParams?: Sea
       <section className="space-y-4">
         {studies.length === 0 ? (
           <article className="rounded-2xl border border-dashed bg-card/60 p-8 text-center">
-            <p className="text-lg font-semibold">No studies yet</p>
+            <p className="text-lg font-semibold">Chưa có nghiên cứu nào</p>
             <p className="mt-2 text-sm text-muted-foreground">
-              Create your first study above, then run assignment generation.
+              Hãy tạo nghiên cứu đầu tiên ở trên, sau đó chạy sinh phân công.
             </p>
           </article>
         ) : null}
         {studies.map((study) => (
           <article key={study.id} className="rounded-2xl border bg-card/80 p-5 shadow-sm">
             <h3 className="text-xl font-semibold">{study.name}</h3>
-            <p className="mt-1 text-sm text-muted-foreground">{study.description ?? "No description"}</p>
+            <p className="mt-1 text-sm text-muted-foreground">{study.description ?? "Không có mô tả"}</p>
             <div className="mt-3 flex flex-wrap items-center gap-2 text-xs">
-              <span className="rounded-full border bg-background px-2 py-1">Audio Groups: {study.studyVoices.map((v) => v.voice.code).join(", ")}</span>
-              <span className="rounded-full border bg-background px-2 py-1">Participants: {study._count.participants}</span>
-              <span className="rounded-full border bg-background px-2 py-1">Assignments: {study._count.assignments}</span>
+              <span className="rounded-full border bg-background px-2 py-1">Nhóm audio: {study.studyVoices.map((v) => v.voice.code).join(", ")}</span>
+              <span className="rounded-full border bg-background px-2 py-1">Người tham gia: {study._count.participants}</span>
+              <span className="rounded-full border bg-background px-2 py-1">Phân công: {study._count.assignments}</span>
             </div>
 
             <div className="mt-4 flex flex-wrap gap-2">
               <form action={runGenerator}>
                 <input type="hidden" name="studyId" value={study.id} />
                 <button className={buttonVariants({ variant: "default" })} type="submit">
-                  Generate Assignments
+                  Sinh phân công
                 </button>
               </form>
               <form action={runValidation}>
                 <input type="hidden" name="studyId" value={study.id} />
                 <button className={buttonVariants({ variant: "outline" })} type="submit">
-                  Validate Assignments
+                  Kiểm tra phân công
                 </button>
               </form>
               <a
@@ -348,13 +347,13 @@ export default async function StudiesPage({ searchParams }: { searchParams?: Sea
                 target="_blank"
                 rel="noreferrer"
               >
-                Export Excel
+                Xuất Excel
               </a>
             </div>
 
             {study.participants.length > 0 ? (
               <div className="mt-4 border-t pt-4">
-                <p className="text-xs tracking-wide text-muted-foreground uppercase">Participant test links</p>
+                <p className="text-xs tracking-wide text-muted-foreground uppercase">Link kiểm thử người tham gia</p>
                 <div className="mt-2 flex flex-wrap gap-2">
                   {study.participants.map((participant) => (
                     <a

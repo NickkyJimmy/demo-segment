@@ -24,28 +24,28 @@ export function SessionSidebar({ userCode, canAccessCompletion }: { userCode: st
   const donePath = `/session/${userCode}/done`;
 
   const items = [
-    { title: "Current Session", href: sessionRoot, icon: HeadphonesIcon },
-    { title: "Completion", href: donePath, icon: CheckCircle2Icon },
+    { title: "Phiên hiện tại", href: sessionRoot, icon: HeadphonesIcon },
+    { title: "Hoàn tất", href: donePath, icon: CheckCircle2Icon },
   ];
 
   return (
     <Sidebar variant="floating" collapsible="icon" className="bg-sidebar/95">
       <SidebarHeader>
         <div className="rounded-xl border bg-sidebar-accent/40 px-3 py-2">
-          <p className="text-xs tracking-[0.16em] uppercase text-sidebar-foreground/70">Participant POV</p>
-          <p className="text-sm font-semibold">Session {userCode}</p>
+          <p className="text-xs tracking-[0.16em] uppercase text-sidebar-foreground/70">Góc nhìn Người tham gia</p>
+          <p className="text-sm font-semibold">Phiên {userCode}</p>
         </div>
       </SidebarHeader>
 
       <SidebarContent>
         <SidebarGroup>
-          <SidebarGroupLabel>Session</SidebarGroupLabel>
+          <SidebarGroupLabel>Phiên</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               {items.map((item) => (
                 <SidebarMenuItem key={item.href}>
                   {item.href === donePath && !canAccessCompletion ? (
-                    <SidebarMenuButton disabled tooltip="Submit rating form first">
+                    <SidebarMenuButton disabled tooltip="Vui lòng gửi biểu mẫu đánh giá trước">
                       <item.icon />
                       <span>{item.title}</span>
                     </SidebarMenuButton>
@@ -70,9 +70,9 @@ export function SessionSidebar({ userCode, canAccessCompletion }: { userCode: st
       <SidebarFooter>
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton onClick={() => router.push("/")} tooltip="Home">
+            <SidebarMenuButton onClick={() => router.push("/")} tooltip="Trang chủ">
               <LayoutDashboardIcon />
-              <span>Back to Home</span>
+              <span>Về Trang chủ</span>
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>

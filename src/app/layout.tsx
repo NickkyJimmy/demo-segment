@@ -4,8 +4,8 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Research Platform",
-  description: "Listening study platform with admin and participant workspaces.",
+  title: "Nền Tảng Nghiên Cứu Âm Thanh",
+  description: "Nền tảng nghiên cứu nghe với không gian quản trị và người tham gia.",
 };
 
 export default function RootLayout({
@@ -14,7 +14,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className="h-full antialiased">
+    <html lang="vi" className="h-full antialiased">
       <body className="min-h-full flex flex-col">
         <TooltipProvider>
           {children}

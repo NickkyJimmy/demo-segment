@@ -13,16 +13,16 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           <div className="flex items-center gap-2">
             <SidebarTrigger />
             <div className="rounded-full border bg-muted/50 px-3 py-1 text-xs font-medium text-muted-foreground">
-              Admin Workspace
+              Không Gian Quản Trị
             </div>
             <div className="hidden items-center gap-1 text-sm text-muted-foreground md:flex">
               <SparklesIcon className="size-4" />
-              Research Operations
+              Vận Hành Nghiên Cứu
             </div>
           </div>
           <Link href="/" className={buttonVariants({ variant: "outline", size: "sm" })}>
             <ArrowRightLeftIcon className="mr-2 size-4" />
-            Switch to User POV
+            Chuyển sang Góc nhìn Người dùng
           </Link>
         </header>
         {children}

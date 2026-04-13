@@ -19,13 +19,13 @@ export async function POST(req: Request) {
     .filter((entry) => entry && entry.size > 0);
 
   if (!voiceId || files.length === 0) {
-    return redirectTo("/admin/voices?error=Missing%20voice%20or%20files");
+    return redirectTo("/admin/voices?error=Thiếu%20nhóm%20audio%20hoặc%20tệp%20tải%20lên");
   }
 
   try {
     const voice = await prisma.voice.findUnique({ where: { id: voiceId } });
     if (!voice) {
-      return redirectTo("/admin/voices?error=Audio%20group%20not%20found");
+      return redirectTo("/admin/voices?error=Không%20tìm%20thấy%20nhóm%20audio");
     }
 
     const admin = createAdminClient();
@@ -59,9 +59,9 @@ export async function POST(req: Request) {
       uploaded += 1;
     }
 
-    return redirectTo(`/admin/voices?ok=Uploaded%20${uploaded}%20files`);
+    return redirectTo(`/admin/voices?ok=Đã%20tải%20lên%20${uploaded}%20tệp`);
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Upload failed";
+    const message = error instanceof Error ? error.message : "Tải lên thất bại";
     return redirectTo(`/admin/voices?error=${encodeURIComponent(message)}`);
   }
 }

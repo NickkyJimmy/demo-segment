@@ -97,7 +97,7 @@ export function generateAssignments(options: {
 }): ParticipantAssignmentPlan[] {
   const { participantIds, voices, perVoice, seed } = options;
   if (perVoice.a + perVoice.b !== perVoice.total) {
-    throw new Error("Invalid per-voice quotas: a + b must equal total.");
+    throw new Error("Quota theo mỗi nhóm audio không hợp lệ: a + b phải bằng total.");
   }
 
   const plans: ParticipantAssignmentPlan[] = [];
@@ -112,7 +112,7 @@ export function generateAssignments(options: {
 
     if (aCandidates.length < perVoice.a || bCandidates.length < perVoice.b) {
       throw new Error(
-        `Voice ${voice.voiceId} does not have enough unique A/B samples for per-participant quotas.`
+        `Nhóm audio ${voice.voiceId} không đủ mẫu A/B duy nhất theo quota mỗi người tham gia.`
       );
     }
 
@@ -152,19 +152,19 @@ export function validateAssignmentPlans(
   for (const plan of plans) {
     if (plan.orderedSampleIds.length !== perVoice.total) {
       errors.push(
-        `Participant ${plan.participantId} voice ${plan.voiceId}: expected ${perVoice.total} samples, got ${plan.orderedSampleIds.length}.`
+        `Người tham gia ${plan.participantId} nhóm ${plan.voiceId}: mong đợi ${perVoice.total} mẫu, thực tế ${plan.orderedSampleIds.length}.`
       );
     }
 
     if (plan.byType.A.length !== perVoice.a || plan.byType.B.length !== perVoice.b) {
       errors.push(
-        `Participant ${plan.participantId} voice ${plan.voiceId}: A/B quota mismatch (${plan.byType.A.length}/${plan.byType.B.length}).`
+        `Người tham gia ${plan.participantId} nhóm ${plan.voiceId}: lệch quota A/B (${plan.byType.A.length}/${plan.byType.B.length}).`
       );
     }
 
     const dedup = new Set(plan.orderedSampleIds);
     if (dedup.size !== plan.orderedSampleIds.length) {
-      errors.push(`Participant ${plan.participantId} voice ${plan.voiceId}: duplicate sample detected.`);
+      errors.push(`Người tham gia ${plan.participantId} nhóm ${plan.voiceId}: phát hiện mẫu trùng.`);
     }
   }
 

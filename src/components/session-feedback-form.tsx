@@ -57,7 +57,7 @@ export function SessionFeedbackForm({
 
       if (!response.ok) {
         const payload = await response.json().catch(() => ({}));
-        toast.error(payload.error ?? "Failed to save playback status.");
+        toast.error(payload.error ?? "Không lưu được trạng thái phát audio.");
         setBusyPlayId(null);
         return;
       }
@@ -93,7 +93,7 @@ export function SessionFeedbackForm({
     if (!res.ok) {
       setSubmitting(false);
       const msg = await res.json().catch(() => ({}));
-      toast.error(msg.error ?? "Failed to submit feedback.");
+      toast.error(msg.error ?? "Không gửi được biểu mẫu đánh giá.");
       return;
     }
 
@@ -105,7 +105,7 @@ export function SessionFeedbackForm({
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h2 className="text-2xl font-semibold tracking-tight">Nghe hết audio, rồi đánh giá 1 lần</h2>
         <p className="rounded-full border bg-background px-3 py-1 text-xs font-medium">
-          Played {playedCount}/{assignments.length}
+          Đã nghe {playedCount}/{assignments.length}
         </p>
       </div>
       <p className="mt-2 text-sm text-muted-foreground">Mỗi audio chỉ phát 1 lần. Form đánh giá sẽ hiện sau khi nghe hết.</p>
@@ -125,7 +125,7 @@ export function SessionFeedbackForm({
                   disabled={locked || busyPlayId !== null || feedbackSubmitted}
                   onClick={() => playOnce(item.id, item.audioUrl, item.played)}
                 >
-                  {item.played ? "Played" : busyPlayId === item.id ? "Playing..." : "Play once"}
+                  {item.played ? "Đã nghe" : busyPlayId === item.id ? "Đang phát..." : "Nghe 1 lần"}
                 </button>
               </div>
             </article>
