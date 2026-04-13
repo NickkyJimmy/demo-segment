@@ -46,7 +46,7 @@ export default async function AdminHome() {
 
       <section className="animate-[fade-up_800ms_ease-out] flex flex-wrap gap-3">
         <Link href="/admin/voices" className={buttonVariants({ variant: "default", size: "lg" })}>
-          Stimulus Management
+          Audio Management
         </Link>
         <Link href="/admin/studies" className={buttonVariants({ variant: "outline", size: "lg" })}>
           Studies & Assignments
@@ -62,7 +62,7 @@ export default async function AdminHome() {
           <div className="rounded-xl border bg-background p-4">
             <p className="text-xs tracking-wide text-muted-foreground uppercase">Step 1</p>
             <p className="mt-1 font-medium">Create Audio Groups</p>
-            <p className="mt-1 text-sm text-muted-foreground">Add groups and upload A_/B_ files in Stimulus.</p>
+            <p className="mt-1 text-sm text-muted-foreground">Add groups and upload A_/B_ files in Audio Management.</p>
           </div>
           <div className="rounded-xl border bg-background p-4">
             <p className="text-xs tracking-wide text-muted-foreground uppercase">Step 2</p>

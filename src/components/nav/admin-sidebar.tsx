@@ -18,7 +18,7 @@ import {
 
 const items = [
   { title: "Dashboard", href: "/admin", icon: HomeIcon },
-  { title: "Stimulus", href: "/admin/voices", icon: Mic2Icon },
+  { title: "Audio", href: "/admin/voices", icon: Mic2Icon },
   { title: "Studies", href: "/admin/studies", icon: FolderCogIcon },
   { title: "Responses", href: "/admin/responses", icon: BarChart3Icon },
 ];
