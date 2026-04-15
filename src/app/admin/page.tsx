@@ -15,9 +15,9 @@ export default async function AdminHome() {
     <main className="mx-auto flex w-full max-w-7xl flex-col gap-8 px-6 py-10">
       <section className="animate-[fade-up_500ms_ease-out] rounded-3xl border bg-gradient-to-br from-white to-orange-50/60 p-6 shadow-sm backdrop-blur md:p-8">
         <p className="inline-flex rounded-full border bg-background px-3 py-1 text-xs font-medium tracking-[0.16em] uppercase">
-          Không Gian Quản Trị
+          Admin Portal
         </p>
-        <h1 className="mt-3 text-3xl font-semibold tracking-tight md:text-4xl">Bảng Điều Khiển Vận Hành Nghiên Cứu</h1>
+        <h1 className="mt-3 text-3xl font-semibold tracking-tight md:text-4xl">Hệ thống đánh giá chất lượng giọng nói</h1>
         <p className="mt-2 max-w-2xl text-sm text-muted-foreground md:text-base">
           Quản lý nhóm audio, tạo nghiên cứu, sinh phân công và theo dõi đánh giá từ người tham gia tại một nơi.
         </p>

@@ -128,6 +128,11 @@ export default async function StudiesPage({ searchParams }: { searchParams?: Sea
           take: 18,
           select: {
             userCode: true,
+            session: {
+              select: {
+                completedAt: true,
+              },
+            },
           },
         },
         _count: {
@@ -262,7 +267,11 @@ export default async function StudiesPage({ searchParams }: { searchParams?: Sea
                       href={`/session/${participant.userCode}`}
                       target="_blank"
                       rel="noreferrer"
-                      className="rounded-full border bg-background px-3 py-1 text-xs font-medium hover:bg-muted"
+                      className={`rounded-full border px-3 py-1 text-xs font-medium transition ${
+                        participant.session?.completedAt
+                          ? "border-emerald-300 bg-emerald-100 text-emerald-900 hover:bg-emerald-200"
+                          : "bg-background hover:bg-muted"
+                      }`}
                     >
                       {participant.userCode}
                     </a>

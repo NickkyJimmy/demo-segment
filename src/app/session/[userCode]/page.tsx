@@ -203,9 +203,9 @@ export default async function SessionPage({ params }: { params: Promise<{ userCo
     <main className="relative mx-auto flex min-h-screen w-full max-w-4xl flex-col gap-6 px-6 py-10">
       <div id="session-content-overlay-root" className="pointer-events-none absolute inset-0 z-40" />
       <header className="rounded-3xl border bg-white/85 p-5 shadow-sm backdrop-blur">
-        <p className="text-xs tracking-wide text-muted-foreground uppercase">Phiên</p>
+        <p className="text-xs tracking-wide text-muted-foreground uppercase">Tên người tham gia:</p>
         <h1 className="mt-1 text-2xl font-semibold tracking-tight">
-          {participant.displayName ? `${participant.displayName} (${participant.userCode})` : `Người tham gia ${participant.userCode}`}
+          {participant.displayName ? `${participant.displayName}` : `Người tham gia ${participant.userCode}`}
         </h1>
       </header>
 

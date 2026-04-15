@@ -204,13 +204,13 @@ export function SessionFeedbackForm({ userCode, assignments }: SessionFeedbackFo
   return (
     <section className="relative min-h-[calc(100dvh-9rem)] rounded-3xl border bg-card/90 p-6 shadow-sm backdrop-blur md:p-8">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h2 className="text-2xl font-semibold tracking-tight">Nghe audio và trả lời biểu mẫu SA theo từng mẫu</h2>
+        <h2 className="text-2xl font-semibold tracking-tight">Nghe audio và trả lời biểu mẫu</h2>
         <p className="rounded-full border bg-background px-3 py-1 text-xs font-medium">
           Đã gửi {respondedCount}/{assignments.length}
         </p>
       </div>
       <p className="mt-2 text-sm text-muted-foreground">
-        Mỗi audio chỉ phát 1 lần. Sau khi nghe xong, bạn phải gửi biểu mẫu SA trước khi nghe audio tiếp theo.
+        Mỗi audio chỉ phát 1 lần. Sau khi nghe xong, bạn phải trả lời câu hỏi và gửi biểu mẫu trước khi nghe audio tiếp theo.
       </p>
 
       <div className="mt-5 space-y-3">

@@ -13,11 +13,11 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           <div className="flex items-center gap-2">
             <SidebarTrigger />
             <div className="rounded-full border bg-muted/50 px-3 py-1 text-xs font-medium text-muted-foreground">
-              Không Gian Quản Trị
+              Admin Portal
             </div>
             <div className="hidden items-center gap-1 text-sm text-muted-foreground md:flex">
               <SparklesIcon className="size-4" />
-              Vận Hành Nghiên Cứu
+              Hệ thống đánh giá chất lượng giọng nói
             </div>
           </div>
           <Link href="/" className={buttonVariants({ variant: "outline", size: "sm" })}>
