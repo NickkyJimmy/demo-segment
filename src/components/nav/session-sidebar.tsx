@@ -32,8 +32,7 @@ export function SessionSidebar({ userCode, canAccessCompletion }: { userCode: st
     <Sidebar variant="floating" collapsible="icon" className="bg-sidebar/95">
       <SidebarHeader>
         <div className="rounded-xl border bg-sidebar-accent/40 px-3 py-2">
-          <p className="text-xs tracking-[0.16em] uppercase text-sidebar-foreground/70">Góc nhìn Người tham gia</p>
-          <p className="text-sm font-semibold">Phiên {userCode}</p>
+          <p className="text-xs tracking-[0.16em] uppercase text-sidebar-foreground/70">Tham gia đánh giá audio</p>
         </div>
       </SidebarHeader>
 
