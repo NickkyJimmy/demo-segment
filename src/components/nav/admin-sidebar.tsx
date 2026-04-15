@@ -1,6 +1,6 @@
 "use client";
 
-import { BarChart3Icon, FolderCogIcon, HomeIcon, Mic2Icon } from "lucide-react";
+import { BarChart3Icon, FolderCogIcon, HomeIcon, LogOutIcon, Mic2Icon } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
 import {
   Sidebar,
@@ -64,6 +64,14 @@ export function AdminSidebar() {
           <p className="text-xs text-sidebar-foreground/70">Công cụ quản trị cho thiết lập, vận hành và báo cáo.</p>
           <p className="text-[11px] text-sidebar-foreground/60">Mẹo: vào “Nghiên cứu” để tạo nhanh link phiên cho người tham gia.</p>
         </div>
+        <SidebarMenu>
+          <SidebarMenuItem>
+            <SidebarMenuButton onClick={() => router.push("/logout")} tooltip="Đăng xuất quản trị">
+              <LogOutIcon />
+              <span>Đăng xuất</span>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        </SidebarMenu>
       </SidebarFooter>
     </Sidebar>
   );

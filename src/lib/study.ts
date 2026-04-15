@@ -26,6 +26,20 @@ export async function ensureParticipants(studyId: string, count: number) {
   return prisma.participant.findMany({ where: { studyId }, orderBy: { createdAt: "asc" } });
 }
 
+function extractPairKeyFromFileName(fileName: string): string | null {
+  const normalized = fileName.replace(/\\/g, "/").split("/").pop() ?? fileName;
+  const upper = normalized.toUpperCase();
+  const idxA = upper.lastIndexOf("A_");
+  const idxB = upper.lastIndexOf("B_");
+  const idx = Math.max(idxA, idxB);
+  if (idx < 0) return null;
+
+  const raw = normalized.slice(idx + 2);
+  const dot = raw.lastIndexOf(".");
+  const key = (dot >= 0 ? raw.slice(0, dot) : raw).trim();
+  return key ? key.toLowerCase() : null;
+}
+
 export async function generateStudyAssignments(studyId: string) {
   const study = await prisma.study.findUnique({
     where: { id: studyId },
@@ -56,8 +70,12 @@ export async function generateStudyAssignments(studyId: string) {
   const voiceBuckets = study.studyVoices.map((sv) => ({
     voiceId: sv.voiceId,
     samplesByType: {
-      A: sv.voice.samples.filter((s) => s.sampleType === SampleType.A).map((s) => s.id),
-      B: sv.voice.samples.filter((s) => s.sampleType === SampleType.B).map((s) => s.id),
+      A: sv.voice.samples
+        .filter((s) => s.sampleType === SampleType.A)
+        .map((s) => ({ id: s.id, pairKey: extractPairKeyFromFileName(s.fileName) })),
+      B: sv.voice.samples
+        .filter((s) => s.sampleType === SampleType.B)
+        .map((s) => ({ id: s.id, pairKey: extractPairKeyFromFileName(s.fileName) })),
     },
   }));
 

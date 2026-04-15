@@ -8,13 +8,7 @@ export default async function AdminHome() {
   const [voiceCount, studyCount, feedbackCount] = await Promise.all([
     prisma.voice.count(),
     prisma.study.count(),
-    prisma.participantSession.count({
-      where: {
-        feedbackSubmittedAt: {
-          not: null,
-        },
-      },
-    }),
+    prisma.response.count(),
   ]);
 
   return (

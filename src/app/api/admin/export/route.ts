@@ -5,17 +5,14 @@ export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
   const studyId = searchParams.get("studyId");
 
-  const feedbackRows = await prisma.participantSession.findMany({
-    where: {
-      feedbackSubmittedAt: {
-        not: null,
-      },
-      participant: studyId
-        ? {
+  const feedbackRows = await prisma.response.findMany({
+    where: studyId
+      ? {
+          participant: {
             studyId,
-          }
-        : undefined,
-    },
+          },
+        }
+      : undefined,
     include: {
       participant: {
         include: {
@@ -23,28 +20,56 @@ export async function GET(req: Request) {
         },
       },
       voice: true,
+      assignment: {
+        include: {
+          sample: true,
+        },
+      },
     },
-    orderBy: { feedbackSubmittedAt: "asc" },
+    orderBy: { createdAt: "asc" },
   });
 
   const rawRows = feedbackRows.map((row) => ({
     study: row.participant.study.name,
     participantCode: row.participant.userCode,
-    voiceCode: row.voice?.code ?? "",
-    overallRating: row.overallRating,
-    feedbackText: row.feedbackText ?? "",
-    submittedAt: row.feedbackSubmittedAt?.toISOString() ?? "",
+    participantName: row.participant.displayName ?? "",
+    voiceCode: row.voice.code,
+    sequence: row.assignment.sequence,
+    fileName: row.assignment.sample.fileName,
+    q1: row.q1,
+    q2: row.q2,
+    q3: row.q3,
+    q4: row.q4,
+    q5: row.q5,
+    q6: row.q6,
+    averageScore: Number(((row.q1 + row.q2 + row.q3 + row.q4 + row.q5 + row.q6) / 6).toFixed(4)),
+    submittedAt: row.createdAt.toISOString(),
   }));
 
-  const summaryMap = new Map<string, { count: number; sum: number }>();
+  const summaryMap = new Map<
+    string,
+    { count: number; sumQ1: number; sumQ2: number; sumQ3: number; sumQ4: number; sumQ5: number; sumQ6: number; sumAvg: number }
+  >();
   for (const row of feedbackRows) {
-    if (row.overallRating == null) {
-      continue;
-    }
-    const key = `${row.participant.study.name}__${row.voice?.code ?? "-"}`;
-    const current = summaryMap.get(key) ?? { count: 0, sum: 0 };
+    const key = `${row.participant.study.name}__${row.voice.code}`;
+    const current = summaryMap.get(key) ?? {
+      count: 0,
+      sumQ1: 0,
+      sumQ2: 0,
+      sumQ3: 0,
+      sumQ4: 0,
+      sumQ5: 0,
+      sumQ6: 0,
+      sumAvg: 0,
+    };
     current.count += 1;
-    current.sum += row.overallRating;
+    current.sumQ1 += row.q1;
+    current.sumQ2 += row.q2;
+    current.sumQ3 += row.q3;
+    current.sumQ4 += row.q4;
+    current.sumQ5 += row.q5;
+    current.sumQ6 += row.q6;
+    current.sumAvg += (row.q1 + row.q2 + row.q3 + row.q4 + row.q5 + row.q6) / 6;
     summaryMap.set(key, current);
   }
 
@@ -53,8 +78,14 @@ export async function GET(req: Request) {
     return {
       study,
       voice,
-      feedbackSubmissions: value.count,
-      averageOverallRating: Number((value.sum / value.count).toFixed(4)),
+      submissions: value.count,
+      avgQ1: Number((value.sumQ1 / value.count).toFixed(4)),
+      avgQ2: Number((value.sumQ2 / value.count).toFixed(4)),
+      avgQ3: Number((value.sumQ3 / value.count).toFixed(4)),
+      avgQ4: Number((value.sumQ4 / value.count).toFixed(4)),
+      avgQ5: Number((value.sumQ5 / value.count).toFixed(4)),
+      avgQ6: Number((value.sumQ6 / value.count).toFixed(4)),
+      avgOverall: Number((value.sumAvg / value.count).toFixed(4)),
     };
   });
 
@@ -62,11 +93,11 @@ export async function GET(req: Request) {
   const rawSheet = XLSX.utils.json_to_sheet(rawRows);
   const summarySheet = XLSX.utils.json_to_sheet(summaryRows);
 
-  XLSX.utils.book_append_sheet(workbook, rawSheet, "RawFeedback");
-  XLSX.utils.book_append_sheet(workbook, summarySheet, "Summary");
+  XLSX.utils.book_append_sheet(workbook, rawSheet, "RawPerAudio");
+  XLSX.utils.book_append_sheet(workbook, summarySheet, "SummaryByVoice");
 
   const buffer = XLSX.write(workbook, { type: "buffer", bookType: "xlsx" });
-  const fileName = studyId ? `study-${studyId}-feedback.xlsx` : "all-studies-feedback.xlsx";
+  const fileName = studyId ? `study-${studyId}-per-audio-feedback.xlsx` : "all-studies-per-audio-feedback.xlsx";
 
   return new Response(buffer, {
     status: 200,

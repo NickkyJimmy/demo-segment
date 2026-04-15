@@ -2,7 +2,9 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { SampleType } from "@/generated/prisma/enums";
 import { prisma } from "@/lib/prisma";
-import { buttonVariants } from "@/components/ui/button";
+  import { buttonVariants } from "@/components/ui/button";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { detectSampleTypeStrict } from "@/lib/sample-type";
 
 export const dynamic = "force-dynamic";
 
@@ -21,11 +23,93 @@ async function createVoice(formData: FormData) {
   }
 
   try {
-    await prisma.voice.create({ data: { name, code } });
+    const voice = await prisma.voice.create({ data: { name, code } });
+
+    const bucket = "test";
+    const prefix = code;
+    const admin = createAdminClient();
+    const { data: listed, error } = await admin.storage.from(bucket).list(prefix, {
+      limit: 1000,
+      offset: 0,
+      sortBy: { column: "name", order: "asc" },
+    });
+
+    if (error) {
+      throw new Error(`Không thể đọc bucket ${bucket}/${prefix}: ${error.message}`);
+    }
+
+    const files = (listed ?? []).filter((item) => Boolean(item.id) && item.name !== ".emptyFolderPlaceholder");
+    let rows = files
+      .map((item) => {
+        const sampleType = detectSampleTypeStrict(item.name);
+        if (!sampleType) return null;
+        const storagePath = `${prefix}/${item.name}`;
+        const { data } = admin.storage.from(bucket).getPublicUrl(storagePath);
+        return {
+          voiceId: voice.id,
+          fileName: item.name,
+          fileUrl: data.publicUrl,
+          sampleType,
+        };
+      })
+      .filter(
+        (
+          row
+        ): row is { voiceId: string; fileName: string; fileUrl: string; sampleType: SampleType } => Boolean(row)
+      );
+
+    // Fallback: if test/<CODE> is empty, try test/A + test/B folder layout.
+    if (rows.length === 0) {
+      const [aList, bList] = await Promise.all([
+        admin.storage.from(bucket).list("A", {
+          limit: 1000,
+          offset: 0,
+          sortBy: { column: "name", order: "asc" },
+        }),
+        admin.storage.from(bucket).list("B", {
+          limit: 1000,
+          offset: 0,
+          sortBy: { column: "name", order: "asc" },
+        }),
+      ]);
+
+      if (aList.error) throw new Error(`Không thể đọc bucket ${bucket}/A: ${aList.error.message}`);
+      if (bList.error) throw new Error(`Không thể đọc bucket ${bucket}/B: ${bList.error.message}`);
+
+      const mapFolderRows = (folder: "A" | "B", list: { id?: string | null; name: string }[]) =>
+        list
+          .filter((item) => Boolean(item.id) && item.name !== ".emptyFolderPlaceholder")
+          .map((item) => {
+            const storagePath = `${folder}/${item.name}`;
+            const { data } = admin.storage.from(bucket).getPublicUrl(storagePath);
+            return {
+              voiceId: voice.id,
+              fileName: `${folder}_${item.name}`,
+              fileUrl: data.publicUrl,
+              sampleType: folder as SampleType,
+            };
+          });
+
+      rows = [...mapFolderRows("A", aList.data ?? []), ...mapFolderRows("B", bList.data ?? [])];
+    }
+
+    if (rows.length > 0) {
+      await prisma.sample.createMany({
+        data: rows,
+        skipDuplicates: true,
+      });
+    }
+
     revalidatePath("/admin/voices");
-    redirect(voicesRedirectUrl("ok", "Đã tạo nhóm audio"));
-  } catch {
-    redirect(voicesRedirectUrl("error", "Không thể tạo nhóm audio (có thể trùng mã)"));
+    redirect(
+      voicesRedirectUrl(
+        "ok",
+        `Đã tạo nhóm audio. Đã đồng bộ ${rows.length} file từ bucket test (ưu tiên test/${prefix}, fallback test/A + test/B).`
+      )
+    );
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Không thể tạo nhóm audio (có thể trùng mã)";
+    redirect(voicesRedirectUrl("error", message));
   }
 }
 
@@ -108,7 +192,6 @@ export default async function VoicesPage({ searchParams }: { searchParams?: Sear
     include: {
       samples: {
         orderBy: { createdAt: "desc" },
-        take: 100,
       },
       _count: {
         select: {
@@ -118,10 +201,23 @@ export default async function VoicesPage({ searchParams }: { searchParams?: Sear
     },
   });
   const totalSamples = voices.reduce((sum, voice) => sum + voice._count.samples, 0);
+
+  const groupedTypeCounts = await prisma.sample.groupBy({
+    by: ["voiceId", "sampleType"],
+    _count: { _all: true },
+  });
+
+  const countByVoice = new Map<string, { a: number; b: number }>();
+  for (const row of groupedTypeCounts) {
+    const current = countByVoice.get(row.voiceId) ?? { a: 0, b: 0 };
+    if (row.sampleType === SampleType.A) current.a = row._count._all;
+    if (row.sampleType === SampleType.B) current.b = row._count._all;
+    countByVoice.set(row.voiceId, current);
+  }
+
   const voiceWithABReady = voices.filter((voice) => {
-    const aCount = voice.samples.filter((s) => s.sampleType === SampleType.A).length;
-    const bCount = voice.samples.filter((s) => s.sampleType === SampleType.B).length;
-    return aCount >= 6 && bCount >= 6;
+    const counts = countByVoice.get(voice.id) ?? { a: 0, b: 0 };
+    return counts.a >= 3 && counts.b >= 3;
   }).length;
 
   return (
@@ -141,19 +237,11 @@ export default async function VoicesPage({ searchParams }: { searchParams?: Sear
             <p className="text-lg font-semibold">{totalSamples}</p>
           </div>
           <div className="rounded-xl border bg-background px-3 py-2">
-            <p className="text-xs text-muted-foreground">Đủ điều kiện (6A/6B)</p>
+            <p className="text-xs text-muted-foreground">Đủ điều kiện (3A/3B)</p>
             <p className="text-lg font-semibold">{voiceWithABReady}</p>
           </div>
         </div>
         <div className="mt-4 flex flex-wrap gap-2">
-          <a
-            href="/api/admin/mock-audio"
-            className={buttonVariants({ variant: "outline", size: "sm" })}
-            target="_blank"
-            rel="noreferrer"
-          >
-            Tải bộ Audio mẫu (200 file)
-          </a>
         </div>
       </header>
 
@@ -180,6 +268,9 @@ export default async function VoicesPage({ searchParams }: { searchParams?: Sear
               Tạo
             </button>
           </form>
+          <p className="mt-2 text-xs text-muted-foreground">
+            Sau khi tạo, hệ thống tự đồng bộ file từ Supabase bucket `test/&lt;MÃ_NHÓM&gt;` (ví dụ `test/V1`).
+          </p>
         </article>
 
         <article className="rounded-2xl border bg-card/80 p-5 shadow-sm">
@@ -227,8 +318,9 @@ export default async function VoicesPage({ searchParams }: { searchParams?: Sear
           </article>
         ) : null}
         {voices.map((voice) => {
-          const aCount = voice.samples.filter((s) => s.sampleType === SampleType.A).length;
-          const bCount = voice.samples.filter((s) => s.sampleType === SampleType.B).length;
+          const counts = countByVoice.get(voice.id) ?? { a: 0, b: 0 };
+          const aCount = counts.a;
+          const bCount = counts.b;
           return (
             <article key={voice.id} className="overflow-hidden rounded-2xl border bg-card/90 shadow-sm">
               <div className="flex flex-wrap items-center justify-between gap-2 border-b bg-muted/40 px-5 py-4">

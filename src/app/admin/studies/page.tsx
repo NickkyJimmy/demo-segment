@@ -30,9 +30,9 @@ async function createStudy(formData: FormData) {
       description: description || null,
       seed: seed || null,
       participantCount: 18,
-      samplesPerVoice: 12,
-      quotaA: 6,
-      quotaB: 6,
+      samplesPerVoice: 6,
+      quotaA: 3,
+      quotaB: 3,
       studyVoices: {
         create: voiceIds.map((voiceId) => ({ voiceId })),
       },
@@ -83,137 +83,35 @@ async function runValidation(formData: FormData) {
   redirect(redirectTo);
 }
 
-async function createMockStudyAndGenerate() {
+async function deleteStudy(formData: FormData) {
   "use server";
-
-  const ensureSyntheticMockGroup = async () => {
-    const mockVoice = await prisma.voice.upsert({
-      where: { code: "MOCK-AUTO" },
-      update: { name: "Nhóm Audio Mẫu (Tạo Tự Động)" },
-      create: { code: "MOCK-AUTO", name: "Nhóm Audio Mẫu (Tạo Tự Động)" },
-    });
-
-    const existingCount = await prisma.sample.count({ where: { voiceId: mockVoice.id } });
-    if (existingCount < 200) {
-      const rows = [];
-      for (let i = 1; i <= 100; i += 1) {
-        const aName = `A_${String(i).padStart(3, "0")}.wav`;
-        const bName = `B_${String(i).padStart(3, "0")}.wav`;
-        rows.push({
-          voiceId: mockVoice.id,
-          fileName: aName,
-          fileUrl: `/api/admin/mock-audio/file?name=${encodeURIComponent(aName)}`,
-          sampleType: SampleType.A,
-        });
-        rows.push({
-          voiceId: mockVoice.id,
-          fileName: bName,
-          fileUrl: `/api/admin/mock-audio/file?name=${encodeURIComponent(bName)}`,
-          sampleType: SampleType.B,
-        });
-      }
-
-      await prisma.sample.createMany({
-        data: rows,
-        skipDuplicates: true,
-      });
-    }
-  };
-
-  let voices = await prisma.voice.findMany({
-    include: {
-      samples: {
-        select: {
-          sampleType: true,
-        },
-      },
-    },
-    orderBy: { createdAt: "asc" },
-  });
-
-  const withCounts = voices.map((voice) => {
-    const aCount = voice.samples.filter((s) => s.sampleType === SampleType.A).length;
-    const bCount = voice.samples.filter((s) => s.sampleType === SampleType.B).length;
-    return { voice, aCount, bCount, total: aCount + bCount };
-  });
-
-  const strictEligible = withCounts.find((item) => item.aCount >= 6 && item.bCount >= 6);
-  const fallbackEligible = withCounts.find((item) => item.total >= 12);
-  let picked = strictEligible ?? fallbackEligible;
-
-  if (!picked) {
-    await ensureSyntheticMockGroup();
-    voices = await prisma.voice.findMany({
-      include: {
-        samples: {
-          select: {
-            sampleType: true,
-          },
-        },
-      },
-      orderBy: { createdAt: "asc" },
-    });
-    const recalculated = voices.map((voice) => {
-      const aCount = voice.samples.filter((s) => s.sampleType === SampleType.A).length;
-      const bCount = voice.samples.filter((s) => s.sampleType === SampleType.B).length;
-      return { voice, aCount, bCount, total: aCount + bCount };
-    });
-    picked = recalculated.find((item) => item.aCount >= 6 && item.bCount >= 6) ?? recalculated.find((item) => item.total >= 12);
+  const studyId = String(formData.get("studyId") ?? "");
+  if (!studyId) {
+    redirect(studiesRedirectUrl("error", "Thiếu mã nghiên cứu để xóa"));
   }
 
-  if (!picked) {
-    redirect("/admin/studies?error=Không%20thể%20chuẩn%20bị%20nhóm%20audio%20mẫu%20để%20kiểm%20thử");
+  try {
+    const existing = await prisma.study.findUnique({
+      where: { id: studyId },
+      select: { name: true },
+    });
+    if (!existing) {
+      redirect(studiesRedirectUrl("error", "Không tìm thấy nghiên cứu"));
+    }
+
+    await prisma.study.delete({
+      where: { id: studyId },
+    });
+
+    revalidatePath("/admin/studies");
+    redirect(studiesRedirectUrl("ok", `Đã xóa nghiên cứu: ${existing.name}`));
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Xóa nghiên cứu thất bại";
+    redirect(studiesRedirectUrl("error", message));
   }
-
-  let quotaA = 6;
-  let quotaB = 6;
-
-  if (!strictEligible) {
-    quotaA = Math.min(6, picked.aCount);
-    quotaB = 12 - quotaA;
-    if (quotaB > picked.bCount) {
-      quotaB = picked.bCount;
-      quotaA = 12 - quotaB;
-    }
-    if (quotaA > picked.aCount) {
-      quotaA = picked.aCount;
-      quotaB = 12 - quotaA;
-    }
-
-    if (quotaA < 0 || quotaB < 0 || quotaA + quotaB !== 12 || quotaA > picked.aCount || quotaB > picked.bCount) {
-      redirect("/admin/studies?error=Không%20thể%20suy%20ra%20quota%20hợp%20lệ%20cho%20nghiên%20cứu%20mẫu");
-    }
-  }
-
-  const study = await prisma.study.create({
-    data: {
-      name: `Nghiên Cứu Mẫu ${new Date().toISOString().slice(0, 16).replace("T", " ")}`,
-      description: "Nghiên cứu kiểm thử được tạo tự động.",
-      participantCount: 18,
-      samplesPerVoice: 12,
-      quotaA,
-      quotaB,
-      seed: `mock-${Date.now()}`,
-      studyVoices: {
-        create: [{ voiceId: picked.voice.id }],
-      },
-    },
-  });
-
-  await generateStudyAssignments(study.id);
-  const firstParticipant = await prisma.participant.findFirst({
-    where: { studyId: study.id },
-    orderBy: { createdAt: "asc" },
-    select: { userCode: true },
-  });
-
-  revalidatePath("/admin/studies");
-  redirect(
-    `/admin/studies?ok=${encodeURIComponent(
-      `Đã tạo nghiên cứu mẫu (quota A/B ${quotaA}/${quotaB}) và sinh phân công thành công. Phiên đầu tiên: /session/${firstParticipant?.userCode ?? ""}`
-    )}`
-  );
 }
+
+
 
 export default async function StudiesPage({ searchParams }: { searchParams?: SearchProps }) {
   const query = (await searchParams) ?? {};
@@ -303,17 +201,7 @@ export default async function StudiesPage({ searchParams }: { searchParams?: Sea
           </button>
         </form>
 
-        <div className="mt-4 border-t pt-4">
-          <p className="text-sm font-medium">Thiết lập QA nhanh</p>
-          <p className="text-xs text-muted-foreground">
-            Tạo một nghiên cứu mẫu từ nhóm audio đủ điều kiện đầu tiên (cần ít nhất 6 A + 6 B), sau đó sinh phân công.
-          </p>
-          <form action={createMockStudyAndGenerate} className="mt-3">
-            <button className={buttonVariants({ variant: "outline" })} type="submit">
-              Tạo nghiên cứu mẫu + Sinh phân công
-            </button>
-          </form>
-        </div>
+
       </section>
 
       <section className="space-y-4">
@@ -346,6 +234,12 @@ export default async function StudiesPage({ searchParams }: { searchParams?: Sea
                 <input type="hidden" name="studyId" value={study.id} />
                 <button className={buttonVariants({ variant: "outline" })} type="submit">
                   Kiểm tra phân công
+                </button>
+              </form>
+              <form action={deleteStudy}>
+                <input type="hidden" name="studyId" value={study.id} />
+                <button className={buttonVariants({ variant: "destructive" })} type="submit">
+                  Xóa nghiên cứu
                 </button>
               </form>
               <a

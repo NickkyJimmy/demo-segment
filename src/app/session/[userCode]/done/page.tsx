@@ -8,7 +8,7 @@ export default async function SessionDonePage({ params }: { params: Promise<{ us
     include: { session: true },
   });
 
-  if (!participant?.session?.feedbackSubmittedAt) {
+  if (!participant?.session?.completedAt) {
     redirect(`/session/${userCode}`);
   }
 

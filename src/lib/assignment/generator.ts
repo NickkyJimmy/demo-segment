@@ -1,8 +1,13 @@
 import { SampleType } from "@/generated/prisma/enums";
 
+type SampleCandidate = {
+  id: string;
+  pairKey?: string | null;
+};
+
 export type VoiceSampleBucket = {
   voiceId: string;
-  samplesByType: Record<SampleType, string[]>;
+  samplesByType: Record<SampleType, SampleCandidate[]>;
 };
 
 export type ParticipantAssignmentPlan = {
@@ -59,6 +64,78 @@ function buildBalancedPool(sampleIds: string[], totalSlots: number, rand: () => 
   });
 
   return shuffle(pool, rand);
+}
+
+type PairedUnit = {
+  pairKey: string;
+  aId: string;
+  bId: string;
+};
+
+function buildBalancedPairPool(pairUnits: PairedUnit[], totalSlots: number, rand: () => number): PairedUnit[] {
+  if (pairUnits.length === 0) {
+    return [];
+  }
+
+  const shuffledBase = shuffle(pairUnits, rand);
+  const base = Math.floor(totalSlots / pairUnits.length);
+  const remainder = totalSlots % pairUnits.length;
+  const pool: PairedUnit[] = [];
+
+  shuffledBase.forEach((pair, idx) => {
+    const repeat = base + (idx < remainder ? 1 : 0);
+    for (let i = 0; i < repeat; i += 1) {
+      pool.push(pair);
+    }
+  });
+
+  return shuffle(pool, rand);
+}
+
+function drawUniquePairsForParticipant(
+  pool: PairedUnit[],
+  allPairs: PairedUnit[],
+  blockedSampleIds: Set<string>,
+  blockedPairKeys: Set<string>,
+  quota: number,
+  rand: () => number
+): PairedUnit[] {
+  const picks: PairedUnit[] = [];
+
+  while (picks.length < quota) {
+    const idx = pool.findIndex(
+      (pair) =>
+        !blockedPairKeys.has(pair.pairKey) &&
+        !blockedSampleIds.has(pair.aId) &&
+        !blockedSampleIds.has(pair.bId)
+    );
+
+    if (idx === -1) {
+      const fallback = shuffle(allPairs, rand).find(
+        (pair) =>
+          !blockedPairKeys.has(pair.pairKey) &&
+          !blockedSampleIds.has(pair.aId) &&
+          !blockedSampleIds.has(pair.bId)
+      );
+      if (!fallback) {
+        throw new Error("Không đủ cặp A/B duy nhất theo quy tắc ghép cặp cho người tham gia.");
+      }
+      picks.push(fallback);
+      blockedPairKeys.add(fallback.pairKey);
+      blockedSampleIds.add(fallback.aId);
+      blockedSampleIds.add(fallback.bId);
+      continue;
+    }
+
+    const picked = pool[idx];
+    pool.splice(idx, 1);
+    picks.push(picked);
+    blockedPairKeys.add(picked.pairKey);
+    blockedSampleIds.add(picked.aId);
+    blockedSampleIds.add(picked.bId);
+  }
+
+  return picks;
 }
 
 function drawUniqueForParticipant(
@@ -173,8 +250,8 @@ export function generateAssignments(options: {
     const randA = mulberry32(hashString(`${baseSeed}:A`));
     const randB = mulberry32(hashString(`${baseSeed}:B`));
 
-    const aCandidates = voice.samplesByType.A;
-    const bCandidates = voice.samplesByType.B;
+    const aCandidates = voice.samplesByType.A.map((item) => item.id);
+    const bCandidates = voice.samplesByType.B.map((item) => item.id);
 
     if (aCandidates.length < perVoice.a || bCandidates.length < perVoice.b) {
       throw new Error(
@@ -182,10 +259,87 @@ export function generateAssignments(options: {
       );
     }
 
+    const participantOrder = shuffle(participantIds, mulberry32(hashString(`${baseSeed}:participants`)));
+    const pairMode = perVoice.total % 2 === 0 && perVoice.a === perVoice.b;
+
+    if (pairMode) {
+      const requiredPairs = perVoice.total / 2;
+      const aMap = new Map<string, string[]>();
+      const bMap = new Map<string, string[]>();
+
+      for (const item of voice.samplesByType.A) {
+        if (!item.pairKey) continue;
+        const list = aMap.get(item.pairKey) ?? [];
+        list.push(item.id);
+        aMap.set(item.pairKey, list);
+      }
+      for (const item of voice.samplesByType.B) {
+        if (!item.pairKey) continue;
+        const list = bMap.get(item.pairKey) ?? [];
+        list.push(item.id);
+        bMap.set(item.pairKey, list);
+      }
+
+      const pairedUnits: PairedUnit[] = [];
+      for (const [pairKey, aIds] of aMap.entries()) {
+        const bIds = bMap.get(pairKey);
+        if (!bIds || aIds.length === 0 || bIds.length === 0) continue;
+        pairedUnits.push({
+          pairKey,
+          aId: shuffle(aIds, randA)[0],
+          bId: shuffle(bIds, randB)[0],
+        });
+      }
+
+      if (pairedUnits.length < requiredPairs) {
+        throw new Error(
+          `Nhóm audio ${voice.voiceId} không đủ cặp A/B theo tên file (cần ${requiredPairs} cặp cho mỗi người).`
+        );
+      }
+
+      const pairPool = buildBalancedPairPool(
+        pairedUnits,
+        participantIds.length * requiredPairs,
+        mulberry32(hashString(`${baseSeed}:pair-pool`))
+      );
+
+      for (const participantId of participantOrder) {
+        const blockedSampleIds = new Set<string>();
+        const blockedPairKeys = new Set<string>();
+        const pickedPairs = drawUniquePairsForParticipant(
+          pairPool,
+          pairedUnits,
+          blockedSampleIds,
+          blockedPairKeys,
+          requiredPairs,
+          mulberry32(hashString(`${baseSeed}:${participantId}:pair-pick`))
+        );
+
+        const picksA = pickedPairs.map((pair) => pair.aId);
+        const picksB = pickedPairs.map((pair) => pair.bId);
+        const pairBlocks = shuffle(
+          pickedPairs.map((pair) => ({ aId: pair.aId, bId: pair.bId })),
+          mulberry32(hashString(`${baseSeed}:${participantId}:pair-order`))
+        );
+        const orderedSampleIds = pairBlocks.flatMap((pair, idx) => {
+          const pairRand = mulberry32(hashString(`${baseSeed}:${participantId}:pair-direction:${idx}`));
+          const aFirst = pairRand() < 0.5;
+          return aFirst ? [pair.aId, pair.bId] : [pair.bId, pair.aId];
+        });
+
+        plans.push({
+          participantId,
+          voiceId: voice.voiceId,
+          orderedSampleIds,
+          byType: { A: picksA, B: picksB },
+        });
+      }
+
+      continue;
+    }
+
     const poolA = buildBalancedPool(aCandidates, participantIds.length * perVoice.a, randA);
     const poolB = buildBalancedPool(bCandidates, participantIds.length * perVoice.b, randB);
-
-    const participantOrder = shuffle(participantIds, mulberry32(hashString(`${baseSeed}:participants`)));
     const typeOrders = buildBalancedTypeOrders({
       participantIds: participantOrder,
       total: perVoice.total,
@@ -304,16 +458,32 @@ export function validateAssignmentPlans(
       });
     }
 
-    const expectedAByPosition = participantCount * (perVoice.a / perVoice.total);
-    const minAByPosition = Math.floor(expectedAByPosition);
-    const maxAByPosition = Math.ceil(expectedAByPosition);
-    positionACounts.forEach((countA, idx) => {
-      if (countA < minAByPosition || countA > maxAByPosition) {
-        errors.push(
-          `Nhóm ${voiceId} vị trí ${idx + 1}: số lần A là ${countA}, mong đợi trong khoảng ${minAByPosition}-${maxAByPosition}.`
-        );
+    const isPairMode = perVoice.total % 2 === 0 && perVoice.a === perVoice.b;
+    if (isPairMode) {
+      // In pair mode, each pair slot (1-2, 3-4, ...) must contain exactly one A per participant.
+      // So A count across each pair slot should equal participantCount.
+      for (let pairIdx = 0; pairIdx < perVoice.total / 2; pairIdx += 1) {
+        const left = pairIdx * 2;
+        const right = left + 1;
+        const countAInPairSlot = positionACounts[left] + positionACounts[right];
+        if (countAInPairSlot !== participantCount) {
+          errors.push(
+            `Nhóm ${voiceId} cặp vị trí ${left + 1}-${right + 1}: số lần A là ${countAInPairSlot}, mong đợi ${participantCount}.`
+          );
+        }
       }
-    });
+    } else {
+      const expectedAByPosition = participantCount * (perVoice.a / perVoice.total);
+      const minAByPosition = Math.floor(expectedAByPosition);
+      const maxAByPosition = Math.ceil(expectedAByPosition);
+      positionACounts.forEach((countA, idx) => {
+        if (countA < minAByPosition || countA > maxAByPosition) {
+          errors.push(
+            `Nhóm ${voiceId} vị trí ${idx + 1}: số lần A là ${countA}, mong đợi trong khoảng ${minAByPosition}-${maxAByPosition}.`
+          );
+        }
+      });
+    }
 
     const bucket = voiceBuckets.get(voiceId);
     if (!bucket) {
@@ -322,12 +492,17 @@ export function validateAssignmentPlans(
 
     ([SampleType.A, SampleType.B] as const).forEach((type) => {
       const candidates = bucket.samplesByType[type];
+      if (candidates.length === 0) {
+        errors.push(`Nhóm ${voiceId} không có mẫu loại ${type}.`);
+        return;
+      }
       const expectedTotal = participantCount * (type === SampleType.A ? perVoice.a : perVoice.b);
-      const base = Math.floor(expectedTotal / candidates.length);
-      const ceiling = Math.ceil(expectedTotal / candidates.length);
+      const candidateIds = candidates.map((item) => item.id);
+      const base = Math.floor(expectedTotal / candidateIds.length);
+      const ceiling = Math.ceil(expectedTotal / candidateIds.length);
       const typeCounts = countByType[type];
 
-      for (const sampleId of candidates) {
+      for (const sampleId of candidateIds) {
         const count = typeCounts.get(sampleId) ?? 0;
         if (count < base || count > ceiling) {
           errors.push(

@@ -75,6 +75,7 @@ model Participant {
   id           String               @id @default(cuid())
   studyId      String
   userCode     String               @unique
+  displayName  String?
   createdAt    DateTime             @default(now())
   updatedAt    DateTime             @updatedAt
   study        Study                @relation(fields: [studyId], references: [id], onDelete: Cascade)
@@ -112,9 +113,6 @@ model ParticipantSession {
   startedAt     DateTime    @default(now())
   updatedAt     DateTime    @updatedAt
   completedAt   DateTime?
-  overallRating Int?
-  feedbackText  String?
-  feedbackSubmittedAt DateTime?
   participant   Participant @relation(fields: [participantId], references: [id], onDelete: Cascade)
   voice         Voice?      @relation(fields: [voiceId], references: [id])
 
@@ -127,7 +125,12 @@ model Response {
   participantId String
   voiceId       String
   sampleId      String
-  rating        Int
+  q1            Int
+  q2            Int
+  q3            Int
+  q4            Int
+  q5            Int
+  q6            Int
   createdAt     DateTime    @default(now())
   assignment    Assignment  @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
   participant   Participant @relation(fields: [participantId], references: [id], onDelete: Cascade)
